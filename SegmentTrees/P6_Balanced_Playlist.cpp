@@ -4,44 +4,19 @@
 
 using namespace std;
 
-class Data{
-    public :
-        int maxi;
-        int mini;
-        int maxIdx;
-        int minIdx;
-        
-
-        Data(){
-            maxi = 0;
-            mini = 0;
-            maxIdx = 0;
-            minIdx = 0;
-        }
-
-        Data(int maxi, int mini, int maxIdx, int minIdx){
-            this->maxi = maxi;
-           this->mini = mini;
-           this->maxIdx = maxIdx;
-           this->minIdx = minIdx;
-        }
-
-};
-
 class SGT{
     public : 
-        vector<Data>seg;
+        vector<int>seg;
+        vector<int>v;
 
-        SGT(int n){
+        SGT(int n, vector<int>arr){
             seg.resize(4*n);
+            v = arr;
         }
 
         void build(int low, int high, int idx, vector<int>&v){
             if(low == high){
-                seg[idx].maxi = v[low];
-                seg[idx].mini = v[low];
-                seg[idx].maxIdx = low;
-                seg[idx].minIdx = low;
+                seg[idx] = v[low];
                 return;
             }
 
@@ -50,65 +25,33 @@ class SGT{
             build(low,mid,2*idx+1,v);
             build(mid+1,high,2*idx+2,v);
 
-            Data left = seg[2*idx+1];
-            Data right = seg[2*idx+2];
+           
 
-            seg[idx].maxi = max(left.maxi,right.maxi);
-            seg[idx].mini = min(left.mini,right.mini);
-
-            if(left.maxi == right.maxi){
-                seg[idx].maxIdx = min(left.maxIdx,right.maxIdx);
-            }
-            else{
-            seg[idx].maxIdx = left.maxi > right.maxi ? left.maxIdx : right.maxIdx;
-            }
-
-            if(left.mini == right.mini){
-                seg[idx].minIdx = max(left.minIdx,right.minIdx);
-            }
-            else{
-            seg[idx].minIdx = left.mini < right.mini ? left.minIdx : right.minIdx;
-            }
+            seg[idx] = max(seg[2*idx+1],seg[2*idx+2]);
 
         }
 
-        Data query(int low, int high, int idx,int l, int r){
+        int query(int low, int high, int idx,int l, int r){
             if(low>r || high<l){
-                return Data(INT_MIN,INT_MAX,INT_MAX,INT_MIN);
+                return 0;
             }
 
             if(l<=low && high<=r){
+                
                 return seg[idx];
+
             }
 
             int mid = (low+high)/2;
 
-            Data left = Data(INT_MIN,INT_MAX,INT_MAX,INT_MIN), right = Data(INT_MIN,INT_MAX,INT_MAX,INT_MIN);
+            int left = 0, right = 0;
             if(l<=mid){
                 left = query(low,mid,2*idx+1,l,r);
             }
             if(r>mid){
                 right = query(mid+1,high,2*idx+2,l,r);
             }
-
-            int maxIdx,minIdx;
-             if(left.maxi == right.maxi){
-                maxIdx = min(left.maxIdx,right.maxIdx);
-            }
-            else{
-            maxIdx = left.maxi > right.maxi ? left.maxIdx : right.maxIdx;
-            }
-
-            if(left.mini == right.mini){
-                minIdx = max(left.minIdx,right.minIdx);
-            }
-            else{
-            minIdx = left.mini < right.mini ? left.minIdx : right.minIdx;
-            }
-
-
-            return Data(max(left.maxi,right.maxi),min(left.mini,right.mini),maxIdx,minIdx);
-
+            return max(left,right);
         }
 };
 
@@ -117,62 +60,36 @@ int main(){
     int n;
     cin>>n;
 
-    vector<int>v(2*n);
-
-    int maxi = 0;
-    int maxiIdx = -1;
+    vector<int>v(3*n);
 
     for(int i=0;i<n;i++){
         cin>>v[i];
         v[i+n] = v[i];
-        if(maxi<v[i]){
-            maxi = v[i];
-            maxiIdx = i;
-        }
+        v[i+2*n] = v[i];
     }
+    
+    
 
-    SGT st = SGT(2*n);
+    SGT st = SGT(3*n,v);
 
-    st.build(0,(2*n-1),0,v);
+    st.build(0,(3*n-1),0,v);
 
-    vector<int>ans(n);
-
-    for(int i=0;i<n;i++){
-        int s = i, e = i+n-1;
+    vector<int>ans(n,-1);
+    int preMax = 0;
+    int s=0;
+    int e=0;
+    while(s<n){
         
-        int idx = -1;
-        while(s<=e){
-            
-            int mid = (e+s)/2;
-
-            Data d= st.query(0,2*n-1,0,i,mid);
-            if((1LL*d.maxi) > (1LL*2*d.mini) && d.minIdx > d.maxIdx){
-                e=mid-1;
-            }
-            else{
-                idx = mid;
-                s=mid+1;
-            }
-
+        while(e<3*n && 2*v[e]>=preMax){
+            preMax = max(preMax,v[e]);
+            e++;
         }
+        if(e==3*n) ans[s] = -1;
+        else ans[s] = e-s;
 
-        if(idx == i+n-1){
-
-            if(maxiIdx < i){
-                ans[i] = n + ans[maxiIdx] - (i-maxiIdx);
-            }
-
-            else{
-                ans[i] = -1;
-            }
-
-        }
-        else{
-            ans[i] = idx - i+1;
-        }
-
-
-
+        preMax = st.query(0,3*n-1,0,s+1,e-1);
+        s++;
+        
     }
 
     for(int i=0;i<n;i++){
